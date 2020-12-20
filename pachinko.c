@@ -40,8 +40,8 @@ void buzzer(int hz, int hzcount){
 
 void printAction(int flag){
 	if(flag==1){
-		DDRB = 0x10; // Æ÷Æ® BÀÇ bit4 ¸¦ Ãâ·Â »óÅÂ·Î ¼¼ÆÃ
-		while(1) // 500 Hz·Î µ¿ÀÛ
+		DDRB = 0x10; // í¬íŠ¸ Bì˜ bit4 ë¥¼ ì¶œë ¥ ìƒíƒœë¡œ ì„¸íŒ…
+		while(1) // 500 Hzë¡œ ë™ì‘
 		{
 			PORTA = 0xff;
 			PORTC = 0x3C;
@@ -56,15 +56,15 @@ void printAction(int flag){
 			PORTC = 0x37;
 			PORTG =	0x01;
 			_delay_ms(2);
-			PORTB = 0x10; // 1ms µ¿¾È ¡®On¡¯ »óÅÂ À¯Áö
+			PORTB = 0x10; // 1ms ë™ì•ˆ â€˜Onâ€™ ìƒíƒœ ìœ ì§€
 			_delay_ms(1);
-			PORTB = 0x00; // 1ms µ¿¾È ¡®Off¡¯ »óÅÂ À¯Áö
+			PORTB = 0x00; // 1ms ë™ì•ˆ â€˜Offâ€™ ìƒíƒœ ìœ ì§€
 			_delay_ms(1);
 		}
 	}
 	else{
-		DDRB = 0x10; // Æ÷Æ® BÀÇ bit4 ¸¦ Ãâ·Â »óÅÂ·Î ¼¼ÆÃ
-		while(1) // 500 Hz·Î µ¿ÀÛ
+		DDRB = 0x10; // í¬íŠ¸ Bì˜ bit4 ë¥¼ ì¶œë ¥ ìƒíƒœë¡œ ì„¸íŒ…
+		while(1) // 500 Hzë¡œ ë™ì‘
 		{
 			buzzer(480, 12);
 			PORTA = rand()%256;
