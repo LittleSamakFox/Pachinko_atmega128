@@ -16,7 +16,7 @@ volatile int x=10;
 volatile int y=10;
 volatile int z=10;
 volatile int game_select = 0;
-volatile int state = STOP;
+volatile int status = STOP;
 
 
 ISR(INT4_vect){
@@ -25,10 +25,10 @@ ISR(INT4_vect){
 }
 
 ISR(INT5_vect){
-	if(state==STOP)
-		state = GO;
+	if(status==STOP)
+		status = GO;
 	else
-		state = STOP;
+		status = STOP;
 }
 
 void init(){
@@ -46,15 +46,15 @@ void fnd(int number, int section, int delay){
 
 void getMainTheme(){
 	while(1){
-		if(state ==GO)
+		if(status == GO)
 			break;
 		fnd(0x08,0x0e,2);
 		if(count%2==0){
-			game_select = 1;
+			game_select = 0;
 			fnd(0x30,0x01,2);
 		}
 		else{
-			game_select = 2;
+			game_select = 1;
 			fnd(0x5B,0x01,2);
 		}
 	}
@@ -73,27 +73,28 @@ void buzzer(int hz, int hzcount){
 
 
 void printAction(int flag){
+	DDRB = 0x10;
 	if(flag==1){
-		DDRB = 0x10; // 포트 B의 bit4 를 출력 상태로 세팅
-		while(1) // 500 Hz로 동작
+		while(1)
 		{
 			PORTA = 0xff;
+			buzzer(480,12);
 			fnd(0x3C,0x08,2);
 			fnd(0x1E,0x04,2);
+
+			buzzer(320,8);
 			fnd(0x30,0x02,2);
 			fnd(0x37,0x01,2);
-
-			PORTB = 0x10; // 1ms 동안 ‘On’ 상태 유지
-			_delay_ms(1);
-			PORTB = 0x00; // 1ms 동안 ‘Off’ 상태 유지
-			_delay_ms(1);
+			if(status==STOP){
+				init();
+				break;
+			}
 		}
 	}
 	else{
-		DDRB = 0x10; // 포트 B의 bit4 를 출력 상태로 세팅
-		while(1) // 500 Hz로 동작
+		while(1)
 		{
-			PORTA = rand()%256; //LED
+			PORTA = rand()%256;
 			buzzer(480, 12);
 			fnd(0x5E,0x08,2);
 			fnd(0x79,0x04,2);
@@ -101,17 +102,22 @@ void printAction(int flag){
 			buzzer(320, 8);
 			fnd(0x77,0x02,2);
 			fnd(0x5E,0x01,2);
-			if(state==STOP)
-				return;
+			if(status == STOP){
+				init();
+				status = GO;
+				break;
+			}
 		}
 	}
 }
 
 void getGambleNumber(){
 	while(1){
+		if(status == STOP){
+			init();
+			break;
+		}
 		for(int i =0; i<10; i++){
-			if(state==STOP)
-				break;
 			PORTA = rand()%256;
 
 			if(x==10){
@@ -131,7 +137,7 @@ void getGambleNumber(){
 			}
 			else{
 				PORTA = 0xF0;
-				fnd(digit[9-y],0x04,8);
+				fnd(digit[y],0x04,8);
 			}
 
 			if(z==10){
@@ -153,10 +159,23 @@ void getGambleNumber(){
 		}
 	}
 }
+/*
+int selectDollNumber(){
 
-void getThrowNumber(){
 }
 
+int getButtonNumber(){
+
+}
+
+void getThrowNumber(){
+	int dollNumber = selectDollNumber();
+	int buttonNumber = getButtonNumber();
+	while(1){
+		fnd(digital[dollNumber/10],0x08,8);
+	}
+}
+*/
 int main(){
 	DDRA = 0xff;
 	DDRC = 0xff; //FND data
@@ -169,9 +188,9 @@ int main(){
 	while(1){
 		getMainTheme();
 		init();
-		if(game_select ==1)
+		if(game_select ==0)
 			getGambleNumber();
-		else
-			getThrowNumber();
+		//else
+			//getThrowNumber();
 	}
 }
