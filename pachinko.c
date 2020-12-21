@@ -1,12 +1,11 @@
 #define F_CPU 16000000UL
+#define STOP 0
+#define GO 1
 
 #include<avr/io.h>
 #include<util/delay.h>
 #include<stdlib.h>
 #include<avr/interrupt.h>
-#define STOP 0
-#define GO 1
-
 
 unsigned char fnd_sel[4] = {0x01, 0x02, 0x04, 0x08};
 unsigned char digit[10]= {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7c, 0x07, 0x7f, 0x67};
@@ -15,6 +14,7 @@ volatile int count = 0;
 volatile int x=10;
 volatile int y=10;
 volatile int z=10;
+volatile int time=0;
 volatile int game_select = 0;
 volatile int status = STOP;
 
@@ -35,7 +35,25 @@ void init(){
 	x = 10;
 	y = 10;
 	z = 10;
+	time = 0;
 	count =0;
+}
+
+void timer3_pwm_init(){
+	DDRE |= (1<<3);
+	TCCR3A |= (1<<COM3A1) | (1<<WGM31);
+	TCCR3B |= (1<<WGM33) | (1<<WGM32) | (1<<CS32);
+	ICR3 = 1250;
+	OCR3A = 90;
+}
+
+void serveMotorControl(){
+	OCR3A = 90;
+	_delay_ms(1000);
+	OCR3A = 150;
+	_delay_ms(1000);
+	OCR3A = 90;
+	_delay_ms(1000);
 }
 
 void fnd(int number, int section, int delay){
@@ -75,7 +93,6 @@ void buzzer(int hz, int hzcount){
 
 
 void printAction(int flag){
-	DDRB = 0x10;
 	while(1){
 		if(status == STOP){
 			init();
@@ -91,6 +108,10 @@ void printAction(int flag){
 			buzzer(320,8);
 			fnd(0x30,0x02,2);
 			fnd(0x37,0x01,2);
+
+			time++;
+			if(time>35)
+				status = STOP;
 		}
 		else{
 			PORTA = rand()%256;
@@ -101,6 +122,10 @@ void printAction(int flag){
 			buzzer(320, 8);
 			fnd(0x77,0x02,2);
 			fnd(0x5E,0x01,2);
+
+			time++;
+			if(time>35)
+				status = STOP;
 		}
 	}
 }
@@ -145,8 +170,10 @@ void getGambleNumber(){
 			}
 
 			if(count>3){
-				if(x==y && y==z)
+				if(x==y && y==z){
 					printAction(1);
+					serveMotorControl();
+				}
 				else
 					printAction(2);
 			}
@@ -171,14 +198,18 @@ void getThrowNumber(){
 }
 */
 int main(){
-	DDRA = 0xff;
+	DDRA = 0xff; //SWITCH
+	DDRB = 0x10; //port B bit4 output
 	DDRC = 0xff; //FND data
 	DDRG = 0x0f; //FND select
 	DDRE = 0xcf; //INT 4,5
 
-	EICRB = 0x0a;
-	EIMSK = 0x30;
-	sei();
+	EICRB = 0x0a; //falling edge
+	EIMSK = 0x30; //interupt en
+	sei(); //interupt enable
+
+	timer3_pwm_init();
+
 	while(1){
 		getMainScreen();
 		if(game_select ==0)
