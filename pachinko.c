@@ -4,6 +4,9 @@
 #include<util/delay.h>
 #include<stdlib.h>
 #include<avr/interrupt.h>
+#define STOP 0
+#define GO 1
+
 
 unsigned char fnd_sel[4] = {0x01, 0x02, 0x04, 0x08};
 unsigned char digit[10]= {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7c, 0x07, 0x7f, 0x67};
@@ -12,11 +15,20 @@ volatile int count = 0;
 volatile int x=10;
 volatile int y=10;
 volatile int z=10;
+volatile int game_select = 0;
+volatile int state = STOP;
 
 
 ISR(INT4_vect){
 	count++;
-	_delay_ms(100);
+	_delay_ms(20);
+}
+
+ISR(INT5_vect){
+	if(state==STOP)
+		state = GO;
+	else
+		state = STOP;
 }
 
 void init(){
@@ -26,8 +38,30 @@ void init(){
 	count =0;
 }
 
+void fnd(int number, int section, int delay){
+	PORTC = number;
+	PORTG = section;
+	_delay_ms(delay);
+}
+
+void getMainTheme(){
+	while(1){
+		if(state ==GO)
+			break;
+		fnd(0x08,0x0e,2);
+		if(count%2==0){
+			game_select = 1;
+			fnd(0x30,0x01,2);
+		}
+		else{
+			game_select = 2;
+			fnd(0x5B,0x01,2);
+		}
+	}
+}
+
 void buzzer(int hz, int hzcount){
-	int i, j, ms;
+	int i, ms;
 	ms = 500/hz;
 	for(i=0; i<hzcount; i++){
 		PORTB = 0x10;
@@ -44,18 +78,11 @@ void printAction(int flag){
 		while(1) // 500 Hz로 동작
 		{
 			PORTA = 0xff;
-			PORTC = 0x3C;
-			PORTG =	0x08;
-			_delay_ms(2);
-			PORTC = 0x1E;
-			PORTG =	0x04;
-			_delay_ms(2);
-			PORTC = 0x30;
-			PORTG =	0x02;
-			_delay_ms(2);
-			PORTC = 0x37;
-			PORTG =	0x01;
-			_delay_ms(2);
+			fnd(0x3C,0x08,2);
+			fnd(0x1E,0x04,2);
+			fnd(0x30,0x02,2);
+			fnd(0x37,0x01,2);
+
 			PORTB = 0x10; // 1ms 동안 ‘On’ 상태 유지
 			_delay_ms(1);
 			PORTB = 0x00; // 1ms 동안 ‘Off’ 상태 유지
@@ -66,26 +93,16 @@ void printAction(int flag){
 		DDRB = 0x10; // 포트 B의 bit4 를 출력 상태로 세팅
 		while(1) // 500 Hz로 동작
 		{
+			PORTA = rand()%256; //LED
 			buzzer(480, 12);
-			PORTA = rand()%256;
-			PORTC = 0x5E;
-			PORTG =	0x08;
-			_delay_ms(2);
-			PORTC = 0x79;
-			PORTG =	0x04;
-			_delay_ms(2);
-			buzzer(320, 8);
-			PORTC = 0x77;
-			PORTG =	0x02;
-			_delay_ms(2);
-			PORTC = 0x5E;
-			PORTG =	0x01;
-			_delay_ms(2);
+			fnd(0x5E,0x08,2);
+			fnd(0x79,0x04,2);
 
-			if(count>4){
-				init();
-				break;
-			}
+			buzzer(320, 8);
+			fnd(0x77,0x02,2);
+			fnd(0x5E,0x01,2);
+			if(state==STOP)
+				return;
 		}
 	}
 }
@@ -93,42 +110,40 @@ void printAction(int flag){
 void getGambleNumber(){
 	while(1){
 		for(int i =0; i<10; i++){
+			if(state==STOP)
+				break;
 			PORTA = rand()%256;
+
 			if(x==10){
 				if(count==1)
 					x = i;
-				PORTC = digit[i];
+				fnd(digit[i],0x08,8);
 			}
 			else{
-				PORTC = digit[x];
 				PORTA = 0xC0;
+				fnd(digit[x],0x08,8);
 			}
-			PORTG =	0x08;
-			_delay_ms(8);
 
 			if(y==10){
 				if(count==2)
 					y = i;
-				PORTC = digit[9-i];
+				fnd(digit[9-i],0x04,8);
 			}
 			else{
-				PORTC = digit[y];
 				PORTA = 0xF0;
+				fnd(digit[9-y],0x04,8);
 			}
-			PORTG = 0x04;
-			_delay_ms(8);
 
 			if(z==10){
 				if(count==3)
 					z = i;
-				PORTC = digit[i];
+				fnd(digit[i],0x02,8);
 			}
 			else{
-				PORTC = digit[z];
 				PORTA = 0xFC;
+				fnd(digit[z],0x02,8);
 			}
-			PORTG = 0x02;
-			_delay_ms(8);
+
 			if(count>3){
 				if(x==y && y==z)
 					printAction(1);
@@ -139,16 +154,24 @@ void getGambleNumber(){
 	}
 }
 
+void getThrowNumber(){
+}
+
 int main(){
 	DDRA = 0xff;
-	DDRC = 0xff;
-	DDRG = 0x0f;
+	DDRC = 0xff; //FND data
+	DDRG = 0x0f; //FND select
+	DDRE = 0xcf; //INT 4,5
 
-	DDRE = 0xef;
-	EICRB = 0x02;
-	EIMSK = 0x10;
-	SREG |= 1<<7;
-	getGambleNumber();
-
-
+	EICRB = 0x0a;
+	EIMSK = 0x30;
+	sei();
+	while(1){
+		getMainTheme();
+		init();
+		if(game_select ==1)
+			getGambleNumber();
+		else
+			getThrowNumber();
+	}
 }
