@@ -20,16 +20,22 @@ volatile int status = STOP;
 
 
 ISR(INT4_vect){
+	cli();
 	count++;
-	_delay_ms(20);
+	_delay_ms(100);
+	sei();
 }
 
 ISR(INT5_vect){
+	cli();
 	if(status==STOP)
 		status = GO;
 	else
 		status = STOP;
+	_delay_ms(100);
+	sei();
 }
+
 
 void init(){
 	x = 10;
@@ -198,13 +204,13 @@ void getThrowNumber(){
 }
 */
 int main(){
-	DDRA = 0xff; //SWITCH
+	DDRA = 0xFF; //SWITCH
 	DDRB = 0x10; //port B bit4 output
-	DDRC = 0xff; //FND data
-	DDRG = 0x0f; //FND select
-	DDRE = 0xcf; //INT 4,5
+	DDRC = 0xFF; //FND data
+	DDRG = 0x0F; //FND select
+	DDRE = 0xCF; //INT 4,5
 
-	EICRB = 0x0a; //falling edge
+	EICRB = 0x0F; //up edge edge
 	EIMSK = 0x30; //interupt en
 	sei(); //interupt enable
 
