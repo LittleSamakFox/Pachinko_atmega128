@@ -17,7 +17,13 @@ volatile int z=10;
 volatile int time=0;
 volatile int game_select = 0;
 volatile int status = STOP;
-
+volatile int firstNumber = 10;
+volatile int secondNumber = 10;
+volatile int firstRandomNumber = 10;
+volatile int secondRandomNumber = 10;
+volatile int throwtime = 0;
+volatile int handler1 = 0;
+volatile int handler2 = 0;
 
 ISR(INT4_vect){
 	cli();
@@ -42,7 +48,14 @@ void init(){
 	y = 10;
 	z = 10;
 	time = 0;
-	count =0;
+	count = 0;
+	firstNumber = 10;
+	secondNumber = 10;
+	firstRandomNumber = 10;
+	secondRandomNumber = 10;
+	throwtime = 0;
+	handler1 = rand()%10+100;
+	handler2 = rand()%20+144;
 }
 
 void timer3_pwm_init(){
@@ -74,7 +87,8 @@ void getMainScreen(){
 			init();
 			break;
 		}
-		fnd(0x08,0x0e,2);
+		fnd(0x38,0x08,2);
+		fnd(0x9C,0x04,2);
 		if(count%2==0){
 			game_select = 0;
 			fnd(0x30,0x01,2);
@@ -186,23 +200,70 @@ void getGambleNumber(){
 		}
 	}
 }
-/*
-int selectDollNumber(){
-
-}
-
-int getButtonNumber(){
-
-}
 
 void getThrowNumber(){
-	int dollNumber = selectDollNumber();
-	int buttonNumber = getButtonNumber();
 	while(1){
-		fnd(digital[dollNumber/10],0x08,8);
+		if(status == STOP){
+			init();
+			break;
+		}
+		for(int i=0; i<10; i++){
+			if(firstNumber==10){
+				if(count==1)
+					firstNumber = i;
+				fnd(digit[i],0x08,8);
+			}
+			else{
+				PORTA = 0xC0;
+				fnd(digit[firstNumber],0x08,8);
+			}
+
+			if(secondNumber==10){
+				if(count==2)
+					secondNumber = i;
+				else if(count==0)
+					fnd(digit[0],0x04,8);
+				else
+					fnd(digit[i],0x04,8);
+			}
+			else{
+				PORTA = 0xF0;
+				fnd(digit[secondNumber],0x04,8);
+				throwtime++;
+			}
+			if(throwtime>0){
+				if(firstRandomNumber==10){
+					if(throwtime>handler1)
+						firstRandomNumber = i;
+					fnd(digit[i],0x02,8);
+				}
+				else{
+					PORTA = 0x0C;
+					fnd(digit[firstRandomNumber],0x02,8);
+				}
+
+				if(secondRandomNumber==10){
+					if(throwtime>handler2)
+						secondRandomNumber = i;
+					fnd(digit[i],0x01,8);
+				}
+				else{
+					PORTA = 0x0F;
+					fnd(digit[secondRandomNumber],0x01,8);
+				}
+			}
+			if(throwtime>handler2+30){
+				if(firstNumber==firstRandomNumber && secondNumber==secondRandomNumber){
+					printAction(1);
+					serveMotorControl();
+				}
+				else
+					printAction(2);
+			}
+		}
 	}
 }
-*/
+
 int main(){
 	DDRA = 0xFF; //SWITCH
 	DDRB = 0x10; //port B bit4 output
@@ -220,7 +281,7 @@ int main(){
 		getMainScreen();
 		if(game_select ==0)
 			getGambleNumber();
-		//else
-			//getThrowNumber();
+		else
+			getThrowNumber();
 	}
 }
