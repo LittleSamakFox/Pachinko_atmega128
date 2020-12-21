@@ -44,10 +44,12 @@ void fnd(int number, int section, int delay){
 	_delay_ms(delay);
 }
 
-void getMainTheme(){
+void getMainScreen(){
 	while(1){
-		if(status == GO)
+		if(status == GO){
+			init();
 			break;
+		}
 		fnd(0x08,0x0e,2);
 		if(count%2==0){
 			game_select = 0;
@@ -74,9 +76,13 @@ void buzzer(int hz, int hzcount){
 
 void printAction(int flag){
 	DDRB = 0x10;
-	if(flag==1){
-		while(1)
-		{
+	while(1){
+		if(status == STOP){
+			init();
+			status = GO;
+			break;
+		}
+		if(flag==1){
 			PORTA = 0xff;
 			buzzer(480,12);
 			fnd(0x3C,0x08,2);
@@ -85,15 +91,8 @@ void printAction(int flag){
 			buzzer(320,8);
 			fnd(0x30,0x02,2);
 			fnd(0x37,0x01,2);
-			if(status==STOP){
-				init();
-				break;
-			}
 		}
-	}
-	else{
-		while(1)
-		{
+		else{
 			PORTA = rand()%256;
 			buzzer(480, 12);
 			fnd(0x5E,0x08,2);
@@ -102,11 +101,6 @@ void printAction(int flag){
 			buzzer(320, 8);
 			fnd(0x77,0x02,2);
 			fnd(0x5E,0x01,2);
-			if(status == STOP){
-				init();
-				status = GO;
-				break;
-			}
 		}
 	}
 }
@@ -186,8 +180,7 @@ int main(){
 	EIMSK = 0x30;
 	sei();
 	while(1){
-		getMainTheme();
-		init();
+		getMainScreen();
 		if(game_select ==0)
 			getGambleNumber();
 		//else
