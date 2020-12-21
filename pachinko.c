@@ -10,20 +10,54 @@
 unsigned char fnd_sel[4] = {0x01, 0x02, 0x04, 0x08};
 unsigned char digit[10]= {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7c, 0x07, 0x7f, 0x67};
 
-volatile int count = 0;
-volatile int x=10;
-volatile int y=10;
-volatile int z=10;
-volatile int time=0;
-volatile int game_select = 0;
 volatile int status = STOP;
-volatile int firstNumber = 10;
-volatile int secondNumber = 10;
-volatile int firstRandomNumber = 10;
-volatile int secondRandomNumber = 10;
-volatile int throwtime = 0;
-volatile int handler1 = 0;
-volatile int handler2 = 0;
+volatile int game_select = 0;
+
+volatile int count = 0;
+volatile int x;
+volatile int y;
+volatile int z;
+volatile int time;
+volatile int firstNumber;
+volatile int secondNumber;
+volatile int firstRandomNumber;
+volatile int secondRandomNumber;
+volatile int throwtime;
+volatile int handler1;
+volatile int handler2;
+
+ISR(INT4_vect);
+ISR(INT5_vect);
+void init(); //인자 초기화
+void timer3_pwm_init(); //pwm 타이머 초기화
+void serveMotorControl(); //서브모터 동작
+void fnd(int number, int section, int delay); //fnd동작
+void getMainScreen(); //메인화면 게임 선택
+void buzzer(int hz, int hzcount); //buzzer 소리
+void printAction(int flag); //승리, 실패 화면
+void levelOne(); //LV 1 게임
+void levelTwo(); //LV 2 게임
+
+int main(){
+	DDRA = 0xFF; //SWITCH
+	DDRB = 0x10; //port B bit4 output
+	DDRC = 0xFF; //FND data
+	DDRG = 0x0F; //FND select
+	DDRE = 0xCF; //INT 4,5
+
+	EICRB = 0x0F; //up edge edge
+	EIMSK = 0x30; //interupt en
+	sei(); //interupt enable
+
+	timer3_pwm_init();
+	while(1){
+		getMainScreen();
+		if(game_select ==0)
+			levelOne();
+		else
+			levelTwo();
+	}
+}
 
 ISR(INT4_vect){
 	cli();
@@ -44,11 +78,11 @@ ISR(INT5_vect){
 
 
 void init(){
+	count = 0;
 	x = 10;
 	y = 10;
 	z = 10;
 	time = 0;
-	count = 0;
 	firstNumber = 10;
 	secondNumber = 10;
 	firstRandomNumber = 10;
@@ -150,7 +184,7 @@ void printAction(int flag){
 	}
 }
 
-void getGambleNumber(){
+void levelOne(){
 	while(1){
 		if(status == STOP){
 			init();
@@ -201,7 +235,7 @@ void getGambleNumber(){
 	}
 }
 
-void getThrowNumber(){
+void levelTwo(){
 	while(1){
 		if(status == STOP){
 			init();
@@ -261,27 +295,5 @@ void getThrowNumber(){
 					printAction(2);
 			}
 		}
-	}
-}
-
-int main(){
-	DDRA = 0xFF; //SWITCH
-	DDRB = 0x10; //port B bit4 output
-	DDRC = 0xFF; //FND data
-	DDRG = 0x0F; //FND select
-	DDRE = 0xCF; //INT 4,5
-
-	EICRB = 0x0F; //up edge edge
-	EIMSK = 0x30; //interupt en
-	sei(); //interupt enable
-
-	timer3_pwm_init();
-
-	while(1){
-		getMainScreen();
-		if(game_select ==0)
-			getGambleNumber();
-		else
-			getThrowNumber();
 	}
 }
