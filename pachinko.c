@@ -26,6 +26,11 @@ volatile int throwtime;
 volatile int handler1;
 volatile int handler2;
 
+volatile int bounced = 0;		// bouncing으로 입력된 횟수
+volatile int pressed = 0;		// 버튼이 눌렸는지 판별하기 위한 변수
+volatile int bounce_value_R = 5;	// 일정 수 bouncing이 일어났을 때 버튼이 눌렸다고 판단하기 위한 기준
+volatile int bounce_value_B = 40;	// R, G, B LED마다 각각 기준 숫자가 다르게 설정되어야 함
+
 ISR(INT4_vect);
 ISR(INT5_vect);
 void init(); //인자 초기화
@@ -59,21 +64,58 @@ int main(){
 	}
 }
 
-ISR(INT4_vect){
-	cli();
-	count++;
-	_delay_ms(100);
-	sei();
+ISR(INT4_vect)
+{
+	if (pressed == 0)
+	{
+		// 만약 bouncing이 일정 수 이상 일어나면 pressed로 판단
+		if (bounced > bounce_value_R)
+		{
+			count++;
+
+			bounced = 0;
+			pressed = 1;
+			_delay_ms(10);
+		}
+	}
+	// 만약 pressed 되었는데 계속 bouncing이 일어나면 모두 0으로 초기화
+	else if (pressed == 1 && bounced > 0)
+	{
+		pressed = 0;
+		bounced = 0;
+	}
+	bounced++;
 }
 
-ISR(INT5_vect){
-	cli();
-	if(status==STOP)
-		status = GO;
-	else
-		status = STOP;
-	_delay_ms(100);
-	sei();
+ISR(INT5_vect)
+{
+	if (pressed == 0)
+	{
+		// 만약 bouncing이 일정 수 이상 일어나면 pressed로 판단
+		if (bounced > bounce_value_B)
+		{
+			/* 버튼을 누르고 수행할 연산 : */
+			if (status == STOP)
+			{
+				status = GO;
+			}
+			else
+			{
+				status = STOP;
+			}
+
+			bounced = 0;
+			pressed = 1;
+			_delay_ms(10);
+		}
+	}
+	// 만약 pressed 되었는데 계속 bouncing이 일어나면 모두 0으로 초기화
+	else if (pressed == 1 && bounced > 0)
+	{
+		pressed = 0;
+		bounced = 0;
+	}
+	bounced++;
 }
 
 
